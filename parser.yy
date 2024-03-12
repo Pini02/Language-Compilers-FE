@@ -19,8 +19,11 @@
   class FunctionAST;
   class SeqAST;
   class PrototypeAST;
-  class BlockExprAST;
   class VarBindingAST;
+  class GlobalAST;
+  class StatementAST;
+  class AssignmentAST;
+  class BlockAST;
 }
 
 // The parsing context.
@@ -56,6 +59,7 @@
   EXTERN     "extern"
   DEF        "def"
   VAR        "var"
+  GLOBAL     "global"
 ;
 
 %token <std::string> IDENTIFIER "id"
@@ -75,6 +79,11 @@
 %type <BlockExprAST*> blockexp
 %type <std::vector<VarBindingAST*>> vardefs
 %type <VarBindingAST*> binding
+%type <GlobalAST*> globalvar
+%type <StatementAST> stmt
+%type <std::vector<StatementAST*>> stmts
+%type <AssignmentAST*> assignment
+%type <BlockAST*> block
 
 
 %%
@@ -90,10 +99,11 @@ program:
 top:
 %empty                  { $$ = nullptr; }
 | definition            { $$ = $1; }
-| external              { $$ = $1; };
+| external              { $$ = $1; }
+| globalvar             { $$ = $1; };
 
 definition:
-  "def" proto exp       { $$ = new FunctionAST($2,$3); $2->noemit(); };
+  "def" proto block     { $$ = new FunctionAST($2,$3); $2->noemit(); };
 
 external:
   "extern" proto        { $$ = $2; };
@@ -106,10 +116,33 @@ idseq:
                          $$ = args; }
 | "id" idseq            { $2.insert($2.begin(),$1); $$ = $2; };
 
+globalvar:
+ "global" "id"          { $$ = new GlobalAST($2);};
+
 %left ":";
 %left "<" "==";
 %left "+" "-";
 %left "*" "/";
+
+stmts:
+  stmt                    { std::vector<StatementAST*> vstmts
+                            vstmts.push_back($1);
+                            $$=vstmts; }
+| stmt ";" stmts          { $3.insert($3.begin(),$1);
+                            $$=$3; };
+
+stmt:
+  assignment              { $$ = $1; }
+| block                   { $$ = $1; }
+| exp                     { $$ = $1; };
+
+assignment:
+  "id" "=" exp            { $$ = new AssignmentAST($1,$3); };
+
+block:
+  "{" stmts "}"                   { $$ = new BlockAST($2); }
+  "{" vardefs ";" stmts "}"       { $$ = new BlockAST($2,$4); };
+
 
 exp:
   exp "+" exp           { $$ = new BinaryExprAST('+',$1,$3); }
@@ -121,9 +154,6 @@ exp:
 | "number"              { $$ = new NumberExprAST($1); }
 | expif                 { $$ = $1; }
 | blockexp              { $$ = $1; };
-
-blockexp:
-  "{" vardefs ";" exp "}" { $$ = new BlockExprAST($2,$4); }
   
 vardefs:
   binding                 { std::vector<VarBindingAST*> definitions;
@@ -134,6 +164,10 @@ vardefs:
                             
 binding:
   "var" "id" "=" exp      { $$ = new VarBindingAST($2,$4); }
+
+initexp:
+  %empty                  { $$ = nullptr;}
+| "=" exp                 { $$ = $2; };
                       
 expif:
   condexp "?" exp ":" exp { $$ = new IfExprAST($1,$3,$5); }
@@ -154,7 +188,7 @@ optexp:
 explist:
   exp                   { std::vector<ExprAST*> args;
                          args.push_back($1);
-			 $$ = args;
+			                   $$ = args;
                         }
 | exp "," explist       { $3.insert($3.begin(), $1); $$ = $3; };
  
