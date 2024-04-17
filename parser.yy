@@ -8,7 +8,7 @@
 %define parse.assert
 
 %code requires {
-  # include <string>
+  #include <string>
   #include <exception>
   class driver;
   class RootAST;
@@ -76,7 +76,6 @@
 %type <PrototypeAST*> external
 %type <PrototypeAST*> proto
 %type <std::vector<std::string>> idseq
-%type <BlockExprAST*> blockexp
 %type <std::vector<VarBindingAST*>> vardefs
 %type <VarBindingAST*> binding
 %type <GlobalAST*> globalvar

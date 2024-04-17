@@ -74,8 +74,9 @@ public:
   Value *codegen(driver& drv) override;
 };
 
+class StatementAST : public RootAST{};
 /// ExprAST - Classe base per tutti i nodi espressione
-class ExprAST : public RootAST {};
+class ExprAST : public StatementAST {};
 
 /// NumberExprAST - Classe per la rappresentazione di costanti numeriche
 class NumberExprAST : public ExprAST {
@@ -134,13 +135,14 @@ public:
   Value *codegen(driver& drv) override;
 };
 
-/// BlockExprAST
-class BlockExprAST : public ExprAST {
+/// BlockAST
+class BlockAST : public StatementAST {
 private:
   std::vector<VarBindingAST*> Def;
-  ExprAST* Val;
+  std::vector <StatementAST*> stmts;
 public:
-  BlockExprAST(std::vector<VarBindingAST*> Def, ExprAST* Val);
+  BlockAST(std::vector<StatementAST*> stmts);
+  BlockAST(std::vector<VarBindingAST*> Def, std::vector<StatementAST*> stmts);
   Value *codegen(driver& drv) override;
 }; 
 
@@ -183,5 +185,21 @@ public:
   FunctionAST(PrototypeAST* Proto, ExprAST* Body);
   Function *codegen(driver& drv) override;
 };
+class AssignmentAST : public StatementAST {
+  private:
+  const std::string name;
+  ExprAST* val;
+  public:
+  AssignmentAST(std::string name, ExprAST* val);
+  Value *codegen(driver &drv);
+  const std::string& getName();
+}
 
+class GlobalAST : public RootAST{
+  private:
+  const std::string name;
+  public:
+  GlobalAST(std::string name);
+  GlobalVariable *codegen(dirver& drv);
+}
 #endif // ! DRIVER_HH
