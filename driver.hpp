@@ -188,9 +188,9 @@ public:
 class AssignmentAST : public StatementAST {
   private:
   const std::string name;
-  ExprAST* val;
+  ExprAST* expr;
   public:
-  AssignmentAST(std::string name, ExprAST* val);
+  AssignmentAST(std::string name, ExprAST* expr);
   Value *codegen(driver &drv);
   const std::string& getName();
 }

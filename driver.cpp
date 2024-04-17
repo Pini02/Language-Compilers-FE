@@ -264,9 +264,10 @@ Value* IfExprAST::codegen(driver& drv) {
     return PN;
 };
 
-/********************** Block Expression Tree *********************/
-BlockExprAST::BlockExprAST(std::vector<VarBindingAST*> Def, ExprAST* Val): 
-         Def(std::move(Def)), Val(Val) {};
+/********************** Block AST *********************/
+BlockAST::BlockAST(std::vector<VarBindingAST*> Def, std::vector <StatementAST*> stmts): 
+         Def(std::move(Def)), stmts(std::move(stmts)) {};
+BlockAST::BlockAST(std::vector<StatementAST*>stmts): stmts(std::move(stmts)){};
 
 Value* BlockExprAST::codegen(driver& drv) {
    // Un blocco è un'espressione preceduta dalla definizione di una o più variabili locali.
@@ -307,9 +308,12 @@ Value* BlockExprAST::codegen(driver& drv) {
    // Ora (ed è la parte più "facile" da capire) viene generato il codice che
    // valuta l'espressione. Eventuali riferimenti a variabili vengono risolti
    // nella symbol table appena modificata
-   Value *blockvalue = Val->codegen(drv);
+   Value *blockvalue;
+   for (int i=0;i<stmts.size();i++){
+      blockvalue=stmts[i]->codegen(drv);
       if (!blockvalue)
          return nullptr;
+    }
    // Prima di uscire dal blocco, si ripristina lo scope esterno al costrutto
    for (int i=0, e=Def.size(); i<e; i++) {
         drv.NamedValues[Def[i]->getName()] = AllocaTmp[i];
@@ -473,4 +477,33 @@ Function *FunctionAST::codegen(driver& drv) {
   function->eraseFromParent();
   return nullptr;
 };
+/************************* Assignment AST **************************/
+AssignmentAST::AssignmentAST(const std::string name, ExprAST* expr): name(name),expr(expr){};
 
+  const std::string &AssignmentAST::getName(){
+    return name;
+  }
+
+  Value *AssignmentAST codegen(driver &drv){
+    Value* LHS=drv.NamedValues[name];
+    if (!var){
+      LHS=module->getNamedGlobal(name);
+      if (!gv){
+        return nullptr;
+      }
+    }
+    Value* RHS=expr->codegen(drv);
+    if (!RHS){
+      return nullptr;
+    }
+    builder->CreateStore(RHS,LHS);
+    return RHS;
+  };
+
+/************************* Global AST **************************/
+GlobalAST::GlobalAST(const std::string name):name(name){};
+
+  GlobalVariable *GlobalAST::codegen(driver &drv){
+    GlobalVariable* gv=new GlobalVariable(*module,Type::getDoubleTy(*context),false,GlobalValue::CommonLinkage,ConstantFP::get(Type::getDoubleTy(*context), 0.0),Name);
+    return gv;
+  };
